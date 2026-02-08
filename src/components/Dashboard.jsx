@@ -1,7 +1,7 @@
 /**
  * Main Dashboard Component
  * Orchestrates the vehicle health monitoring interface
- * Fully responsive across all devices
+ * Fully responsive across all devices with tabbed results view
  */
 import React, { useState, useCallback, useMemo, memo } from 'react';
 import { 
@@ -19,7 +19,9 @@ import {
   Tooltip,
   useTheme,
   useMediaQuery,
-  SwipeableDrawer
+  SwipeableDrawer,
+  Tabs,
+  Tab
 } from '@mui/material';
 import { 
   DirectionsCar as CarIcon, 
@@ -30,7 +32,9 @@ import {
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
   Tune as TuneIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  Assessment as ResultsIcon,
+  LocationOn as LocationIcon
 } from '@mui/icons-material';
 
 import { useThemeMode } from '../context/ThemeContext';
@@ -44,6 +48,23 @@ import { predictVehicleHealth } from '../services/api';
 import { FEATURE_DEFINITIONS, convertToFeatures } from '../utils/helpers';
 
 const SIDEBAR_WIDTH = 440;
+
+// Custom TabPanel component
+const TabPanel = ({ children, value, index, ...other }) => (
+  <Box
+    role="tabpanel"
+    hidden={value !== index}
+    id={`results-tabpanel-${index}`}
+    aria-labelledby={`results-tab-${index}`}
+    {...other}
+  >
+    {value === index && (
+      <Fade in timeout={400}>
+        <Box>{children}</Box>
+      </Fade>
+    )}
+  </Box>
+);
 
 // Memoized Sidebar Content component
 const SidebarContent = memo(({ 
@@ -151,6 +172,9 @@ const Dashboard = () => {
   
   // Mobile drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
+  
+  // Tab state for results section
+  const [activeTab, setActiveTab] = useState(0);
 
   const [telemetryValues, setTelemetryValues] = useState(() => {
     const defaults = {};
@@ -163,6 +187,11 @@ const Dashboard = () => {
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Tab change handler
+  const handleTabChange = useCallback((event, newValue) => {
+    setActiveTab(newValue);
+  }, []);
 
   // Memoized handlers to prevent unnecessary re-renders
   const handleTelemetryChange = useCallback((updater) => {
@@ -196,6 +225,7 @@ const Dashboard = () => {
       
       if (result.success) {
         setPrediction(result.data);
+        setActiveTab(0); // Switch to results tab after analysis
       } else {
         setError('Failed to get prediction. Please try again.');
       }
@@ -220,6 +250,10 @@ const Dashboard = () => {
     scrollThumb: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.2)',
     emptyStateBg: isDark ? 'rgba(22, 27, 34, 0.6)' : 'rgba(255, 255, 255, 0.9)',
     emptyStateBorder: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+    tabBg: isDark ? 'rgba(22, 27, 34, 0.8)' : 'rgba(255, 255, 255, 0.95)',
+    tabIndicator: '#3b82f6',
+    tabActive: isDark ? '#ffffff' : '#0f172a',
+    tabInactive: isDark ? 'rgba(255,255,255,0.5)' : '#64748b',
   }), [isDark]);
 
   // Sidebar width based on screen size
@@ -388,7 +422,7 @@ const Dashboard = () => {
           </Box>
         )}
 
-        {/* Right Content - Results */}
+        {/* Right Content - Results with Tabs */}
         <Box 
           sx={{ 
             flexGrow: 1, 
@@ -522,18 +556,18 @@ const Dashboard = () => {
               </Fade>
             )}
 
-            {/* Results */}
+            {/* Results with Tabs */}
             {prediction && !loading && (
               <Fade in timeout={500}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 3, md: 4 } }}>
-                  {/* Section Header */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+                <Box>
+                  {/* Header with Reconfigure button */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                       <Typography variant="h5" fontWeight="700" color={colors.textPrimary}>
-                        Analysis Results
+                        Dashboard
                       </Typography>
                       <Chip 
-                        label="Complete" 
+                        label="Analysis Complete" 
                         size="small"
                         sx={{ 
                           bgcolor: isDark ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.1)',
@@ -561,36 +595,111 @@ const Dashboard = () => {
                     )}
                   </Box>
 
-                  {/* Maintenance Recommendation - Hero Card */}
-                  <MaintenanceRecommendation
-                    decision={prediction.maintenance_decision}
-                  />
-
-                  {/* KPI Section */}
-                  <Box>
-                    <Typography 
-                      variant="overline" 
+                  {/* Professional Tabs Container */}
+                  <Paper 
+                    elevation={0}
+                    sx={{ 
+                      borderRadius: 3,
+                      overflow: 'hidden',
+                      bgcolor: colors.tabBg,
+                      border: `1px solid ${colors.sidebarBorder}`,
+                      backdropFilter: 'blur(10px)'
+                    }}
+                  >
+                    {/* Tabs Header */}
+                    <Box 
                       sx={{ 
-                        color: colors.textSecondary, 
-                        letterSpacing: 2, 
-                        fontWeight: 700,
-                        display: 'block',
-                        mb: 2
+                        borderBottom: `1px solid ${colors.sidebarBorder}`,
+                        bgcolor: isDark ? 'rgba(30, 35, 42, 0.5)' : 'rgba(248, 250, 252, 0.8)'
                       }}
                     >
-                      Key Performance Indicators
-                    </Typography>
-                    <KPICards kpis={prediction.kpis} />
-                  </Box>
+                      <Tabs 
+                        value={activeTab} 
+                        onChange={handleTabChange}
+                        variant={isMobile ? "fullWidth" : "standard"}
+                        sx={{
+                          minHeight: 56,
+                          px: { xs: 1, sm: 2 },
+                          '& .MuiTabs-indicator': {
+                            height: 3,
+                            borderRadius: '3px 3px 0 0',
+                            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)'
+                          },
+                          '& .MuiTab-root': {
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            fontSize: '0.95rem',
+                            minHeight: 56,
+                            color: colors.tabInactive,
+                            transition: 'all 0.2s ease',
+                            '&.Mui-selected': {
+                              color: colors.tabActive
+                            },
+                            '&:hover': {
+                              color: colors.tabActive,
+                              bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'
+                            }
+                          }
+                        }}
+                      >
+                        <Tab 
+                          icon={<ResultsIcon sx={{ fontSize: 20 }} />}
+                          iconPosition="start"
+                          label="Analysis Results"
+                          id="results-tab-0"
+                          aria-controls="results-tabpanel-0"
+                        />
+                        <Tab 
+                          icon={<LocationIcon sx={{ fontSize: 20 }} />}
+                          iconPosition="start"
+                          label="Nearby Workshops"
+                          id="results-tab-1"
+                          aria-controls="results-tabpanel-1"
+                        />
+                      </Tabs>
+                    </Box>
 
-                  {/* Two Column Layout for Health & Contributors */}
-                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 3 }}>
-                    <ComponentHealth componentHealth={prediction.component_health} />
-                    <DegradationContributors contributors={prediction.degradation_contributors} />
-                  </Box>
+                    {/* Tab Content */}
+                    <Box sx={{ p: { xs: 2, sm: 3 } }}>
+                      {/* Tab 1: Analysis Results */}
+                      <TabPanel value={activeTab} index={0}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 3, md: 4 } }}>
+                          {/* Maintenance Recommendation - Hero Card */}
+                          <MaintenanceRecommendation
+                            decision={prediction.maintenance_decision}
+                          />
 
-                  {/* Nearby Workshops Section */}
-                  <NearbyWorkshops />
+                          {/* KPI Section */}
+                          <Box>
+                            <Typography 
+                              variant="overline" 
+                              sx={{ 
+                                color: colors.textSecondary, 
+                                letterSpacing: 2, 
+                                fontWeight: 700,
+                                display: 'block',
+                                mb: 2
+                              }}
+                            >
+                              Key Performance Indicators
+                            </Typography>
+                            <KPICards kpis={prediction.kpis} />
+                          </Box>
+
+                          {/* Two Column Layout for Health & Contributors */}
+                          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 3 }}>
+                            <ComponentHealth componentHealth={prediction.component_health} />
+                            <DegradationContributors contributors={prediction.degradation_contributors} />
+                          </Box>
+                        </Box>
+                      </TabPanel>
+
+                      {/* Tab 2: Nearby Workshops */}
+                      <TabPanel value={activeTab} index={1}>
+                        <NearbyWorkshops />
+                      </TabPanel>
+                    </Box>
+                  </Paper>
                 </Box>
               </Fade>
             )}
