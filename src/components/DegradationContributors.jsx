@@ -27,7 +27,7 @@ import {
 import { useThemeMode } from '../context/ThemeContext';
 import { getAIInsights } from '../services/api';
 
-const DegradationContributors = ({ contributors, kpis, componentHealth }) => {
+const DegradationContributors = ({ contributors, kpis, componentHealth, onInsightsUpdate }) => {
   const { isDark } = useThemeMode();
   const [aiInsights, setAiInsights] = useState(null);
   const [loadingInsights, setLoadingInsights] = useState(false);
@@ -110,6 +110,10 @@ const DegradationContributors = ({ contributors, kpis, componentHealth }) => {
       const result = await getAIInsights(contributors, kpis, componentHealth);
       if (result.success && result.insights) {
         setAiInsights(result.insights);
+        // Notify parent component (Dashboard) about the insights for PDF
+        if (onInsightsUpdate) {
+          onInsightsUpdate(result.insights);
+        }
       } else {
         setInsightsError(result.message || 'Failed to generate insights');
       }
@@ -119,7 +123,7 @@ const DegradationContributors = ({ contributors, kpis, componentHealth }) => {
     } finally {
       setLoadingInsights(false);
     }
-  }, [contributors, kpis, componentHealth]);
+  }, [contributors, kpis, componentHealth, onInsightsUpdate]);
 
   // Auto-fetch insights when contributors change
   useEffect(() => {

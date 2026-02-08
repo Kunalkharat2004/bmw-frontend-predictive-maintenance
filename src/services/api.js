@@ -153,4 +153,22 @@ export const healthCheck = async () => {
   }
 };
 
+/**
+ * Upload PDF report to Cloudinary
+ * @param {string} pdfBase64 - Base64 encoded PDF data
+ * @param {string} filename - Optional custom filename
+ * @returns {Promise} Upload result with Cloudinary URL
+ */
+export const uploadPDFToCloudinary = async (pdfBase64, filename = null) => {
+  try {
+    const response = await api.post('/upload-pdf', {
+      pdf_data: pdfBase64,
+      filename
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.error || 'Failed to upload PDF');
+  }
+};
+
 export default api;

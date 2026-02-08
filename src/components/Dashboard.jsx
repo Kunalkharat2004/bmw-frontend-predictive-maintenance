@@ -4,7 +4,7 @@
  * Fully responsive across all devices with tabbed results view
  * Includes auto-send SMS alerts on analysis completion
  */
-import React, { useState, useCallback, useMemo, memo } from 'react';
+import React, { useState, useCallback, useMemo, memo, useEffect, useRef } from 'react';
 import { 
   Box, 
   AppBar, 
@@ -43,7 +43,10 @@ import {
   Phone as PhoneIcon,
   Sms as SmsIcon,
   CheckCircle as CheckIcon,
-  Error as ErrorIcon
+  Error as ErrorIcon,
+  Download as DownloadIcon,
+  CloudUpload as CloudUploadIcon,
+  CloudDone as CloudDoneIcon
 } from '@mui/icons-material';
 
 import { useThemeMode } from '../context/ThemeContext';
@@ -53,7 +56,9 @@ import ComponentHealth from './ComponentHealth';
 import DegradationContributors from './DegradationContributors';
 import MaintenanceRecommendation from './MaintenanceRecommendation';
 import NearbyWorkshops from './NearbyWorkshops';
-import { predictVehicleHealth, sendAlert } from '../services/api';
+import MaintenanceReportPDF from './MaintenanceReportPDF';
+import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
+import { predictVehicleHealth, sendAlert, uploadPDFToCloudinary } from '../services/api';
 import { FEATURE_DEFINITIONS, convertToFeatures } from '../utils/helpers';
 
 const SIDEBAR_WIDTH = 440;
@@ -287,6 +292,67 @@ const Dashboard = () => {
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  // AI Insights state (lifted from DegradationContributors for PDF)
+  const [aiInsights, setAiInsights] = useState(null);
+  
+  // PDF Cloud upload state
+  const [pdfUploadStatus, setPdfUploadStatus] = useState({ uploading: false, uploaded: false, url: null });
+  const pdfUploadTriggered = useRef(false);
+
+  // Auto-upload PDF to Cloudinary when AI insights are received
+  useEffect(() => {
+    const uploadPDFToCloud = async () => {
+      if (aiInsights && prediction && !pdfUploadTriggered.current) {
+        pdfUploadTriggered.current = true;
+        setPdfUploadStatus({ uploading: true, uploaded: false, url: null });
+        
+        try {
+          // Generate PDF blob
+          const pdfDoc = <MaintenanceReportPDF data={prediction} aiInsights={aiInsights} />;
+          const blob = await pdf(pdfDoc).toBlob();
+          
+          // Convert blob to base64
+          const reader = new FileReader();
+          reader.readAsDataURL(blob);
+          reader.onloadend = async () => {
+            const base64Data = reader.result.split(',')[1];
+            const filename = `vehicle_health_report_${new Date().toISOString().split('T')[0]}_${Date.now()}`;
+            
+            try {
+              const result = await uploadPDFToCloudinary(base64Data, filename);
+              if (result.success) {
+                console.log('✅ PDF uploaded to Cloudinary:', result.url);
+                setPdfUploadStatus({ uploading: false, uploaded: true, url: result.url });
+              } else {
+                console.error('❌ PDF upload failed:', result.error);
+                setPdfUploadStatus({ uploading: false, uploaded: false, url: null });
+              }
+            } catch (err) {
+              console.error('❌ PDF upload error:', err);
+              setPdfUploadStatus({ uploading: false, uploaded: false, url: null });
+            }
+          };
+        } catch (err) {
+          console.error('❌ PDF generation error:', err);
+          setPdfUploadStatus({ uploading: false, uploaded: false, url: null });
+        }
+      }
+    };
+    
+    uploadPDFToCloud();
+  }, [aiInsights, prediction]);
+
+  // Reset upload trigger when prediction changes
+  useEffect(() => {
+    pdfUploadTriggered.current = false;
+    setPdfUploadStatus({ uploading: false, uploaded: false, url: null });
+  }, [prediction?.kpis]);
+
+  // Callback to receive AI insights from DegradationContributors
+  const handleAIInsightsUpdate = useCallback((insights) => {
+    setAiInsights(insights);
+  }, []);
 
   // Tab change handler
   const handleTabChange = useCallback((event, newValue) => {
@@ -503,7 +569,7 @@ const Dashboard = () => {
             <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 2 }}>
               <Chip 
                 icon={<MemoryIcon sx={{ fontSize: 16 }} />}
-                label="LSTM + Autoencoder"
+                label="LSTM + Attention"
                 size="small"
                 sx={{ 
                   bgcolor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
@@ -759,7 +825,7 @@ const Dashboard = () => {
                 <Box>
                   {/* Header with Reconfigure button */}
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                       <Typography variant="h5" fontWeight="700" color={colors.textPrimary}>
                         Dashboard
                       </Typography>
@@ -774,22 +840,87 @@ const Dashboard = () => {
                       />
                     </Box>
                     
-                    {/* Mobile: Re-configure button */}
-                    {isMobile && (
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<TuneIcon />}
-                        onClick={handleOpenDrawer}
-                        sx={{ 
-                          borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
-                          color: colors.textPrimary,
-                          fontWeight: 600
-                        }}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      {/* Download Report Button */}
+                      <PDFDownloadLink
+                        document={<MaintenanceReportPDF data={prediction} aiInsights={aiInsights} />}
+                        fileName={`vehicle-health-report-${new Date().toISOString().split('T')[0]}.pdf`}
+                        style={{ textDecoration: 'none' }}
                       >
-                        Reconfigure
-                      </Button>
-                    )}
+                        {({ loading: pdfLoading }) => (
+                          <Button
+                            variant="contained"
+                            size="small"
+                            disabled={pdfLoading}
+                            startIcon={pdfLoading ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
+                            sx={{ 
+                              background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                              fontWeight: 600,
+                              fontSize: '0.8rem',
+                              px: 2,
+                              '&:hover': {
+                                background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
+                              },
+                              '&:disabled': {
+                                background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                                color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'
+                              }
+                            }}
+                          >
+                            {pdfLoading ? 'Preparing...' : 'Download Report'}
+                          </Button>
+                        )}
+                      </PDFDownloadLink>
+
+                      {/* Cloud Upload Status Indicator */}
+                      {pdfUploadStatus.uploading && (
+                        <Chip
+                          icon={<CircularProgress size={14} sx={{ color: '#3b82f6' }} />}
+                          label="Uploading to Cloud..."
+                          size="small"
+                          sx={{
+                            bgcolor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
+                            color: isDark ? '#60a5fa' : '#2563eb',
+                            fontWeight: 500,
+                            fontSize: '0.75rem'
+                          }}
+                        />
+                      )}
+                      {pdfUploadStatus.uploaded && (
+                        <Tooltip title={`Saved to Cloud: ${pdfUploadStatus.url}`} arrow>
+                          <Chip
+                            icon={<CloudDoneIcon sx={{ fontSize: 16 }} />}
+                            label="Saved to Cloud"
+                            size="small"
+                            sx={{
+                              bgcolor: isDark ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+                              color: isDark ? '#4ade80' : '#16a34a',
+                              fontWeight: 600,
+                              fontSize: '0.75rem',
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => window.open(pdfUploadStatus.url, '_blank')}
+                          />
+                        </Tooltip>
+                      )}
+
+                      {/* Mobile: Re-configure button */}
+                      {isMobile && (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<TuneIcon />}
+                          onClick={handleOpenDrawer}
+                          sx={{ 
+                            borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                            color: colors.textPrimary,
+                            fontWeight: 600
+                          }}
+                        >
+                          Reconfigure
+                        </Button>
+                      )}
+                    </Box>
                   </Box>
 
                   {/* Professional Tabs Container */}
@@ -890,6 +1021,7 @@ const Dashboard = () => {
                               contributors={prediction.degradation_contributors}
                               kpis={prediction.kpis}
                               componentHealth={prediction.component_health}
+                              onInsightsUpdate={handleAIInsightsUpdate}
                             />
                           </Box>
                         </Box>
