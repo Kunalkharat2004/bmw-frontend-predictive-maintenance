@@ -203,4 +203,25 @@ export const sendChatMessage = async (message) => {
   }
 };
 
+/**
+ * Send PDF report link via email
+ * @param {string} email - Recipient email address
+ * @param {string} pdfUrl - Cloudinary PDF URL
+ * @param {string} reportDate - Optional report date
+ * @returns {Promise} Email send result
+ */
+export const sendReportEmail = async (email, pdfUrl, reportDate = null) => {
+  try {
+    const response = await api.post('/send-report-email', {
+      email,
+      pdf_url: pdfUrl,
+      report_date: reportDate
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.error || 'Failed to send email');
+  }
+};
+
 export default api;
+

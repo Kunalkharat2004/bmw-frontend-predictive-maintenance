@@ -26,7 +26,11 @@ import {
   TextField,
   InputAdornment,
   Snackbar,
-  Divider
+  Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import { 
   DirectionsCar as CarIcon, 
@@ -46,7 +50,8 @@ import {
   Error as ErrorIcon,
   Download as DownloadIcon,
   CloudUpload as CloudUploadIcon,
-  CloudDone as CloudDoneIcon
+  CloudDone as CloudDoneIcon,
+  Email as EmailIcon
 } from '@mui/icons-material';
 
 import { useThemeMode } from '../context/ThemeContext';
@@ -59,7 +64,7 @@ import NearbyWorkshops from './NearbyWorkshops';
 import Chatbot from './Chatbot';
 import MaintenanceReportPDF from './MaintenanceReportPDF';
 import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
-import { predictVehicleHealth, sendAlert, uploadPDFToCloudinary } from '../services/api';
+import { predictVehicleHealth, sendAlert, uploadPDFToCloudinary, sendReportEmail } from '../services/api';
 import { FEATURE_DEFINITIONS, convertToFeatures } from '../utils/helpers';
 
 const SIDEBAR_WIDTH = 440;
@@ -301,6 +306,11 @@ const Dashboard = () => {
   const [pdfUploadStatus, setPdfUploadStatus] = useState({ uploading: false, uploaded: false, url: null });
   const pdfUploadTriggered = useRef(false);
 
+  // Email state (no dialog, direct send)
+  const DEFAULT_EMAIL = 'kunalkharat2004@gmail.com';
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+
   // Auto-upload PDF to Cloudinary when AI insights are received
   useEffect(() => {
     const uploadPDFToCloud = async () => {
@@ -427,6 +437,49 @@ const Dashboard = () => {
       });
     }
   }, [phoneNumber]);
+
+  // Handle email send - direct send to default email
+  const handleSendEmail = useCallback(async () => {
+    console.log('Email button clicked, PDF URL:', pdfUploadStatus.url);
+    if (!pdfUploadStatus.url) {
+      console.log('No PDF URL available');
+      return;
+    }
+    
+    setEmailSending(true);
+    try {
+      console.log('Sending email to:', DEFAULT_EMAIL);
+      const result = await sendReportEmail(
+        DEFAULT_EMAIL,
+        pdfUploadStatus.url,
+        new Date().toISOString().split('T')[0]
+      );
+      
+      if (result.success) {
+        setEmailSent(true);
+        // Show success feedback via snackbar
+        setSmsStatus({
+          open: true,
+          success: true,
+          message: `Report sent to ${DEFAULT_EMAIL}`
+        });
+      } else {
+        setSmsStatus({
+          open: true,
+          success: false,
+          message: result.message || 'Failed to send email'
+        });
+      }
+    } catch (err) {
+      console.error('Email send error:', err);
+      setSmsStatus({
+        open: true,
+        success: false,
+        message: err.message || 'Failed to send email'
+      });
+    }
+    setEmailSending(false);
+  }, [pdfUploadStatus.url]);
 
   const handleAnalyze = useCallback(async () => {
     setLoading(true);
@@ -902,6 +955,31 @@ const Dashboard = () => {
                             }}
                             onClick={() => window.open(pdfUploadStatus.url, '_blank')}
                           />
+                        </Tooltip>
+                      )}
+
+                      {/* Send via Email Button */}
+                      {pdfUploadStatus.uploaded && (
+                        <Tooltip title={`Send report to ${DEFAULT_EMAIL}`} arrow>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={emailSending ? <CircularProgress size={14} color="inherit" /> : (emailSent ? <CheckIcon /> : <EmailIcon />)}
+                            onClick={handleSendEmail}
+                            disabled={emailSending || emailSent}
+                            sx={{
+                              borderColor: emailSent ? '#22c55e' : (isDark ? 'rgba(139, 92, 246, 0.5)' : 'rgba(139, 92, 246, 0.7)'),
+                              color: emailSent ? '#22c55e' : (isDark ? '#a78bfa' : '#7c3aed'),
+                              fontWeight: 600,
+                              fontSize: '0.8rem',
+                              '&:hover': {
+                                borderColor: emailSent ? '#16a34a' : '#7c3aed',
+                                bgcolor: emailSent ? 'rgba(34, 197, 94, 0.1)' : 'rgba(139, 92, 246, 0.1)'
+                              }
+                            }}
+                          >
+                            {emailSending ? 'Sending...' : (emailSent ? 'Sent' : 'Email')}
+                          </Button>
                         </Tooltip>
                       )}
 
