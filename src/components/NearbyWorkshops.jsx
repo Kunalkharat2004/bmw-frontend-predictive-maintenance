@@ -217,14 +217,8 @@ const NearbyWorkshops = () => {
             sx={{ 
               px: 4,
               py: 1.5,
-              fontWeight: 700,
-              fontSize: '1rem',
-              background: 'linear-gradient(135deg, #3b82f6 0%, #10b981 100%)',
-              boxShadow: '0 4px 14px rgba(59, 130, 246, 0.4)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #2563eb 0%, #059669 100%)',
-                boxShadow: '0 6px 20px rgba(59, 130, 246, 0.5)',
-              }
+              fontWeight: 600,
+              fontSize: '1rem'
             }}
           >
             Find Workshops Near Me
