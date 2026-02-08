@@ -56,6 +56,7 @@ import ComponentHealth from './ComponentHealth';
 import DegradationContributors from './DegradationContributors';
 import MaintenanceRecommendation from './MaintenanceRecommendation';
 import NearbyWorkshops from './NearbyWorkshops';
+import Chatbot from './Chatbot';
 import MaintenanceReportPDF from './MaintenanceReportPDF';
 import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
 import { predictVehicleHealth, sendAlert, uploadPDFToCloudinary } from '../services/api';
@@ -1039,6 +1040,13 @@ const Dashboard = () => {
           </Box>
         </Box>
       </Box>
+
+      {/* Chatbot - appears after PDF is uploaded */}
+      <Chatbot 
+        prediction={prediction}
+        pdfUrl={pdfUploadStatus.url}
+        isReady={pdfUploadStatus.uploaded && prediction !== null}
+      />
     </Box>
   );
 };

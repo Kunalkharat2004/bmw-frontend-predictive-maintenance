@@ -171,4 +171,36 @@ export const uploadPDFToCloudinary = async (pdfBase64, filename = null) => {
   }
 };
 
+/**
+ * Initialize chatbot with vehicle health context
+ * @param {Object} predictionData - The prediction results
+ * @param {string} pdfUrl - Optional Cloudinary PDF URL
+ * @returns {Promise} Initialization result with greeting
+ */
+export const initializeChatbot = async (predictionData, pdfUrl = null) => {
+  try {
+    const response = await api.post('/chatbot/init', {
+      prediction_data: predictionData,
+      pdf_url: pdfUrl
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.error || 'Failed to initialize chatbot');
+  }
+};
+
+/**
+ * Send a message to the chatbot
+ * @param {string} message - User's message
+ * @returns {Promise} Chatbot response
+ */
+export const sendChatMessage = async (message) => {
+  try {
+    const response = await api.post('/chatbot/message', { message });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.error || 'Failed to send message');
+  }
+};
+
 export default api;
