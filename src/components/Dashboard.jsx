@@ -39,6 +39,7 @@ import KPICards from './KPICards';
 import ComponentHealth from './ComponentHealth';
 import DegradationContributors from './DegradationContributors';
 import MaintenanceRecommendation from './MaintenanceRecommendation';
+import NearbyWorkshops from './NearbyWorkshops';
 import { predictVehicleHealth } from '../services/api';
 import { FEATURE_DEFINITIONS, convertToFeatures } from '../utils/helpers';
 
@@ -587,6 +588,9 @@ const Dashboard = () => {
                     <ComponentHealth componentHealth={prediction.component_health} />
                     <DegradationContributors contributors={prediction.degradation_contributors} />
                   </Box>
+
+                  {/* Nearby Workshops Section */}
+                  <NearbyWorkshops />
                 </Box>
               </Fade>
             )}
