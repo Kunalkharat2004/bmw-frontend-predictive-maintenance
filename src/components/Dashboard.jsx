@@ -2,6 +2,7 @@
  * Main Dashboard Component
  * Orchestrates the vehicle health monitoring interface
  * Fully responsive across all devices with tabbed results view
+ * Includes auto-send SMS alerts on analysis completion
  */
 import React, { useState, useCallback, useMemo, memo } from 'react';
 import { 
@@ -21,7 +22,11 @@ import {
   useMediaQuery,
   SwipeableDrawer,
   Tabs,
-  Tab
+  Tab,
+  TextField,
+  InputAdornment,
+  Snackbar,
+  Divider
 } from '@mui/material';
 import { 
   DirectionsCar as CarIcon, 
@@ -34,7 +39,11 @@ import {
   Tune as TuneIcon,
   Close as CloseIcon,
   Assessment as ResultsIcon,
-  LocationOn as LocationIcon
+  LocationOn as LocationIcon,
+  Phone as PhoneIcon,
+  Sms as SmsIcon,
+  CheckCircle as CheckIcon,
+  Error as ErrorIcon
 } from '@mui/icons-material';
 
 import { useThemeMode } from '../context/ThemeContext';
@@ -44,7 +53,7 @@ import ComponentHealth from './ComponentHealth';
 import DegradationContributors from './DegradationContributors';
 import MaintenanceRecommendation from './MaintenanceRecommendation';
 import NearbyWorkshops from './NearbyWorkshops';
-import { predictVehicleHealth } from '../services/api';
+import { predictVehicleHealth, sendAlert } from '../services/api';
 import { FEATURE_DEFINITIONS, convertToFeatures } from '../utils/helpers';
 
 const SIDEBAR_WIDTH = 440;
@@ -75,7 +84,10 @@ const SidebarContent = memo(({
   isMobile, 
   onClose,
   colors,
-  isDark
+  isDark,
+  phoneNumber,
+  onPhoneChange,
+  smsEnabled
 }) => (
   <Box 
     sx={{ 
@@ -129,6 +141,74 @@ const SidebarContent = memo(({
       />
     </Box>
 
+    {/* SMS Alert Section */}
+    <Box sx={{ 
+      p: 2, 
+      borderTop: `1px solid ${colors.sidebarBorder}`,
+      bgcolor: isDark ? 'rgba(59, 130, 246, 0.05)' : 'rgba(59, 130, 246, 0.03)'
+    }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+        <SmsIcon sx={{ fontSize: 18, color: '#3b82f6' }} />
+        <Typography variant="subtitle2" fontWeight="700" color={colors.textPrimary}>
+          SMS Alert
+        </Typography>
+        {smsEnabled && phoneNumber && (
+          <Chip 
+            label="Enabled" 
+            size="small" 
+            sx={{ 
+              height: 20,
+              fontSize: '0.65rem',
+              bgcolor: isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)',
+              color: '#22c55e',
+              fontWeight: 600
+            }} 
+          />
+        )}
+      </Box>
+      <TextField
+        fullWidth
+        size="small"
+        placeholder="Enter phone number"
+        value={phoneNumber}
+        onChange={(e) => onPhoneChange(e.target.value)}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <PhoneIcon sx={{ fontSize: 18, color: colors.textSecondary }} />
+            </InputAdornment>
+          ),
+        }}
+        sx={{
+          '& .MuiOutlinedInput-root': {
+            bgcolor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+            '& fieldset': {
+              borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+            },
+            '&:hover fieldset': {
+              borderColor: '#3b82f6',
+            },
+            '&.Mui-focused fieldset': {
+              borderColor: '#3b82f6',
+            },
+          },
+          '& .MuiInputBase-input': {
+            color: colors.textPrimary,
+            fontSize: '0.875rem',
+            '&::placeholder': {
+              color: colors.textSecondary,
+              opacity: 1
+            }
+          }
+        }}
+        helperText={
+          <Typography variant="caption" sx={{ color: colors.textSecondary, fontSize: '0.7rem' }}>
+            Include country code (e.g., +91XXXXXXXXXX)
+          </Typography>
+        }
+      />
+    </Box>
+
     {/* Analyze Button */}
     <Box sx={{ p: 2, borderTop: `1px solid ${colors.sidebarBorder}` }}>
       <Button
@@ -156,6 +236,20 @@ const SidebarContent = memo(({
       >
         {loading ? 'Analyzing...' : 'Run Analysis'}
       </Button>
+      {phoneNumber && (
+        <Typography 
+          variant="caption" 
+          sx={{ 
+            display: 'block', 
+            textAlign: 'center', 
+            mt: 1, 
+            color: colors.textSecondary,
+            fontSize: '0.7rem'
+          }}
+        >
+          📱 SMS alert will be sent on completion
+        </Typography>
+      )}
     </Box>
   </Box>
 ));
@@ -175,6 +269,12 @@ const Dashboard = () => {
   
   // Tab state for results section
   const [activeTab, setActiveTab] = useState(0);
+  
+  // Phone number for SMS alerts
+  const [phoneNumber, setPhoneNumber] = useState('');
+  
+  // SMS notification state
+  const [smsStatus, setSmsStatus] = useState({ open: false, success: false, message: '' });
 
   const [telemetryValues, setTelemetryValues] = useState(() => {
     const defaults = {};
@@ -210,6 +310,57 @@ const Dashboard = () => {
     setDrawerOpen(true);
   }, []);
 
+  const handlePhoneChange = useCallback((value) => {
+    setPhoneNumber(value);
+  }, []);
+
+  const handleCloseSmsStatus = useCallback(() => {
+    setSmsStatus(prev => ({ ...prev, open: false }));
+  }, []);
+
+  // Send SMS alert function
+  const sendSmsAlert = useCallback(async (predictionData) => {
+    if (!phoneNumber || !predictionData) return;
+
+    // Determine severity
+    const failureProb = predictionData.kpis?.failure_probability || 0;
+    let severity = 'normal';
+    if (failureProb >= 70) severity = 'critical';
+    else if (failureProb >= 40) severity = 'warning';
+
+    // Always send SMS regardless of severity
+    try {
+      const result = await sendAlert(
+        phoneNumber,
+        failureProb,
+        predictionData.kpis?.remaining_useful_life || 0,
+        severity,
+        null // nearest center - optional
+      );
+
+      if (result.success) {
+        setSmsStatus({
+          open: true,
+          success: true,
+          message: `Alert sent to ${phoneNumber}`
+        });
+      } else {
+        setSmsStatus({
+          open: true,
+          success: false,
+          message: result.message || 'Failed to send alert'
+        });
+      }
+    } catch (err) {
+      console.error('SMS send error:', err);
+      setSmsStatus({
+        open: true,
+        success: false,
+        message: err.message || 'Failed to send SMS alert'
+      });
+    }
+  }, [phoneNumber]);
+
   const handleAnalyze = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -226,6 +377,11 @@ const Dashboard = () => {
       if (result.success) {
         setPrediction(result.data);
         setActiveTab(0); // Switch to results tab after analysis
+
+        // Auto-send SMS if phone number is provided
+        if (phoneNumber) {
+          sendSmsAlert(result.data);
+        }
       } else {
         setError('Failed to get prediction. Please try again.');
       }
@@ -235,7 +391,7 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [telemetryValues, isMobile]);
+  }, [telemetryValues, isMobile, phoneNumber, sendSmsAlert]);
 
   // Memoized dynamic colors based on theme
   const colors = useMemo(() => ({
@@ -265,6 +421,28 @@ const Dashboard = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: colors.contentBg }}>
+      {/* SMS Status Snackbar */}
+      <Snackbar
+        open={smsStatus.open}
+        autoHideDuration={5000}
+        onClose={handleCloseSmsStatus}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={handleCloseSmsStatus}
+          severity={smsStatus.success ? 'success' : 'error'}
+          variant="filled"
+          icon={smsStatus.success ? <CheckIcon /> : <ErrorIcon />}
+          sx={{ 
+            borderRadius: 2,
+            fontWeight: 600,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
+          }}
+        >
+          {smsStatus.message}
+        </Alert>
+      </Snackbar>
+
       {/* Header */}
       <AppBar 
         position="static" 
@@ -395,6 +573,9 @@ const Dashboard = () => {
           onClose={handleCloseDrawer}
           colors={colors}
           isDark={isDark}
+          phoneNumber={phoneNumber}
+          onPhoneChange={handlePhoneChange}
+          smsEnabled={true}
         />
       </SwipeableDrawer>
 
@@ -418,6 +599,9 @@ const Dashboard = () => {
               onClose={handleCloseDrawer}
               colors={colors}
               isDark={isDark}
+              phoneNumber={phoneNumber}
+              onPhoneChange={handlePhoneChange}
+              smsEnabled={true}
             />
           </Box>
         )}
@@ -552,6 +736,19 @@ const Dashboard = () => {
                   <Typography color={colors.textSecondary}>
                     Running LSTM predictions and anomaly detection
                   </Typography>
+                  {phoneNumber && (
+                    <Chip 
+                      icon={<SmsIcon sx={{ fontSize: 14 }} />}
+                      label={`SMS will be sent to ${phoneNumber}`}
+                      size="small"
+                      sx={{ 
+                        mt: 2,
+                        bgcolor: isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)',
+                        color: '#3b82f6',
+                        fontWeight: 600
+                      }}
+                    />
+                  )}
                 </Paper>
               </Fade>
             )}
