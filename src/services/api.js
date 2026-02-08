@@ -50,6 +50,26 @@ export const predictVehicleHealth = async (features) => {
 };
 
 /**
+ * Get AI-powered insights for degradation factors
+ * @param {Array} contributors - Degradation contributors
+ * @param {Object} kpis - Key performance indicators
+ * @param {Object} componentHealth - Component health scores
+ * @returns {Promise} AI-generated insights
+ */
+export const getAIInsights = async (contributors, kpis = null, componentHealth = null) => {
+  try {
+    const response = await api.post('/ai/insights', {
+      contributors,
+      kpis,
+      component_health: componentHealth
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to get AI insights');
+  }
+};
+
+/**
  * Get nearby BMW service centers
  * @param {number} latitude - User's latitude
  * @param {number} longitude - User's longitude

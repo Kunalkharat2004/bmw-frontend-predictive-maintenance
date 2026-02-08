@@ -886,7 +886,11 @@ const Dashboard = () => {
                           {/* Two Column Layout for Health & Contributors */}
                           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 3 }}>
                             <ComponentHealth componentHealth={prediction.component_health} />
-                            <DegradationContributors contributors={prediction.degradation_contributors} />
+                            <DegradationContributors 
+                              contributors={prediction.degradation_contributors}
+                              kpis={prediction.kpis}
+                              componentHealth={prediction.component_health}
+                            />
                           </Box>
                         </Box>
                       </TabPanel>
