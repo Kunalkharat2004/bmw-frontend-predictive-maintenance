@@ -59,6 +59,14 @@ const Chatbot = ({ prediction, pdfUrl, isReady }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Reset chat session whenever prediction data changes (new analysis run)
+  useEffect(() => {
+    if (prediction) {
+      setIsInitialized(false);
+      setMessages([]);
+    }
+  }, [prediction]);
+
   // Initialize chatbot when opened and ready
   useEffect(() => {
     if (isOpen && isReady && prediction && !isInitialized && !isInitializing) {

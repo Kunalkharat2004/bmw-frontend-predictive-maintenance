@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Main Dashboard Component
  * Orchestrates the vehicle health monitoring interface
  * Fully responsive across all devices with tabbed results view
@@ -96,9 +96,6 @@ const SidebarContent = memo(({
   onClose,
   colors,
   isDark,
-  phoneNumber,
-  onPhoneChange,
-  smsEnabled
 }) => (
   <Box 
     sx={{ 
@@ -152,73 +149,6 @@ const SidebarContent = memo(({
       />
     </Box>
 
-    {/* SMS Alert Section */}
-    <Box sx={{ 
-      p: 2, 
-      borderTop: `1px solid ${colors.sidebarBorder}`,
-      bgcolor: isDark ? 'rgba(59, 130, 246, 0.05)' : 'rgba(59, 130, 246, 0.03)'
-    }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-        <SmsIcon sx={{ fontSize: 18, color: '#3b82f6' }} />
-        <Typography variant="subtitle2" fontWeight="700" color={colors.textPrimary}>
-          SMS Alert
-        </Typography>
-        {smsEnabled && phoneNumber && (
-          <Chip 
-            label="Enabled" 
-            size="small" 
-            sx={{ 
-              height: 20,
-              fontSize: '0.65rem',
-              bgcolor: isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)',
-              color: '#22c55e',
-              fontWeight: 600
-            }} 
-          />
-        )}
-      </Box>
-      <TextField
-        fullWidth
-        size="small"
-        placeholder="Enter phone number"
-        value={phoneNumber}
-        onChange={(e) => onPhoneChange(e.target.value)}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <PhoneIcon sx={{ fontSize: 18, color: colors.textSecondary }} />
-            </InputAdornment>
-          ),
-        }}
-        sx={{
-          '& .MuiOutlinedInput-root': {
-            bgcolor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-            '& fieldset': {
-              borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-            },
-            '&:hover fieldset': {
-              borderColor: '#3b82f6',
-            },
-            '&.Mui-focused fieldset': {
-              borderColor: '#3b82f6',
-            },
-          },
-          '& .MuiInputBase-input': {
-            color: colors.textPrimary,
-            fontSize: '0.875rem',
-            '&::placeholder': {
-              color: colors.textSecondary,
-              opacity: 1
-            }
-          }
-        }}
-        helperText={
-          <Typography variant="caption" sx={{ color: colors.textSecondary, fontSize: '0.7rem' }}>
-            Include country code (e.g., +91XXXXXXXXXX)
-          </Typography>
-        }
-      />
-    </Box>
 
     {/* Analyze Button */}
     <Box sx={{ p: 2, borderTop: `1px solid ${colors.sidebarBorder}` }}>
@@ -247,20 +177,18 @@ const SidebarContent = memo(({
       >
         {loading ? 'Analyzing...' : 'Run Analysis'}
       </Button>
-      {phoneNumber && (
-        <Typography 
-          variant="caption" 
-          sx={{ 
-            display: 'block', 
-            textAlign: 'center', 
-            mt: 1, 
-            color: colors.textSecondary,
-            fontSize: '0.7rem'
-          }}
-        >
-          📱 SMS alert will be sent on completion
-        </Typography>
-      )}
+      <Typography 
+        variant="caption" 
+        sx={{ 
+          display: 'block', 
+          textAlign: 'center', 
+          mt: 1, 
+          color: colors.textSecondary,
+          fontSize: '0.7rem'
+        }}
+      >
+        📱 SMS alert will be sent to +91 96659 72221
+      </Typography>
     </Box>
   </Box>
 ));
@@ -281,8 +209,7 @@ const Dashboard = () => {
   // Tab state for results section
   const [activeTab, setActiveTab] = useState(0);
   
-  // Phone number for SMS alerts
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('+919665972221');
   
   // SMS notification state
   const [smsStatus, setSmsStatus] = useState({ open: false, success: false, message: '' });
@@ -693,9 +620,6 @@ const Dashboard = () => {
           onClose={handleCloseDrawer}
           colors={colors}
           isDark={isDark}
-          phoneNumber={phoneNumber}
-          onPhoneChange={handlePhoneChange}
-          smsEnabled={true}
         />
       </SwipeableDrawer>
 
@@ -719,9 +643,6 @@ const Dashboard = () => {
               onClose={handleCloseDrawer}
               colors={colors}
               isDark={isDark}
-              phoneNumber={phoneNumber}
-              onPhoneChange={handlePhoneChange}
-              smsEnabled={true}
             />
           </Box>
         )}
