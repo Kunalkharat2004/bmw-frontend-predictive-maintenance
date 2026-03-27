@@ -214,6 +214,8 @@ const Dashboard = () => {
   // SMS notification state
   const [smsStatus, setSmsStatus] = useState({ open: false, success: false, message: '' });
 
+  const [shouldAutoSearchWorkshops, setShouldAutoSearchWorkshops] = useState(false);
+
   const [telemetryValues, setTelemetryValues] = useState(() => {
     const defaults = {};
     FEATURE_DEFINITIONS.forEach(f => {
@@ -295,6 +297,9 @@ const Dashboard = () => {
   // Tab change handler
   const handleTabChange = useCallback((event, newValue) => {
     setActiveTab(newValue);
+    if (newValue === 0) {
+      setShouldAutoSearchWorkshops(false);
+    }
   }, []);
 
   // Memoized handlers to prevent unnecessary re-renders
@@ -995,6 +1000,13 @@ const Dashboard = () => {
                           {/* Maintenance Recommendation - Hero Card */}
                           <MaintenanceRecommendation
                             decision={prediction.maintenance_decision}
+                            onSchedule={() => {
+                              if (prediction.maintenance_decision.level === 'critical' || 
+                                  prediction.maintenance_decision.level === 'immediate') {
+                                setShouldAutoSearchWorkshops(true);
+                                setActiveTab(1);
+                              }
+                            }}
                           />
 
                           {/* KPI Section */}
@@ -1029,7 +1041,7 @@ const Dashboard = () => {
 
                       {/* Tab 2: Nearby Workshops */}
                       <TabPanel value={activeTab} index={1}>
-                        <NearbyWorkshops />
+                        <NearbyWorkshops autoSearch={shouldAutoSearchWorkshops} />
                       </TabPanel>
                     </Box>
                   </Paper>

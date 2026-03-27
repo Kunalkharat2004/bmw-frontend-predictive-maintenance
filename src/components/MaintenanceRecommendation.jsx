@@ -17,7 +17,7 @@ import {
 } from '@mui/icons-material';
 import { useThemeMode } from '../context/ThemeContext';
 
-const MaintenanceRecommendation = ({ decision }) => {
+const MaintenanceRecommendation = ({ decision, onSchedule }) => {
   const { isDark } = useThemeMode();
 
   if (!decision) {
@@ -147,6 +147,7 @@ const MaintenanceRecommendation = ({ decision }) => {
             <Button 
               variant="contained"
               size="small"
+              onClick={onSchedule}
               endIcon={<ArrowForward sx={{ fontSize: 16 }} />}
               sx={{ 
                 mt: 2,
@@ -166,6 +167,7 @@ const MaintenanceRecommendation = ({ decision }) => {
         </Box>
       </Box>
     </Box>
+
   );
 };
 

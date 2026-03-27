@@ -108,7 +108,7 @@ export const FEATURE_DEFINITIONS = [
     unit: '%',
     min: 0,
     max: 100,
-    default: 80,
+    default: 10,
     normalize: (value) => value / 100,
     category: 'battery'
   },
@@ -118,7 +118,7 @@ export const FEATURE_DEFINITIONS = [
     unit: '%',
     min: 0,
     max: 100,
-    default: 90,
+    default: 15,
     normalize: (value) => value / 100,
     category: 'battery'
   },
@@ -128,7 +128,7 @@ export const FEATURE_DEFINITIONS = [
     unit: 'V',
     min: 250,
     max: 420,
-    default: 360,
+    default: 260,
     normalize: (value) => value,
     category: 'battery'
   },
@@ -138,7 +138,7 @@ export const FEATURE_DEFINITIONS = [
     unit: 'A',
     min: -80,
     max: 80,
-    default: -25,
+    default: 75,
     normalize: (value) => value,
     category: 'battery'
   },
@@ -148,7 +148,7 @@ export const FEATURE_DEFINITIONS = [
     unit: '°C',
     min: 20,
     max: 70,
-    default: 32,
+    default: 65,
     normalize: (value) => value,
     category: 'thermal'
   },
@@ -158,7 +158,7 @@ export const FEATURE_DEFINITIONS = [
     unit: '°C',
     min: 30,
     max: 110,
-    default: 65,
+    default: 105,
     normalize: (value) => value,
     category: 'thermal'
   },
@@ -168,7 +168,7 @@ export const FEATURE_DEFINITIONS = [
     unit: 'mm/s',
     min: 0,
     max: 3,
-    default: 0.6,
+    default: 2.8,
     step: 0.1,
     normalize: (value) => value,
     category: 'motor'
@@ -179,7 +179,7 @@ export const FEATURE_DEFINITIONS = [
     unit: 'rpm',
     min: 0,
     max: 6000,
-    default: 2200,
+    default: 5500,
     step: 100,
     normalize: (value) => value,
     category: 'motor'
@@ -190,7 +190,7 @@ export const FEATURE_DEFINITIONS = [
     unit: '%',
     min: 0,
     max: 100,
-    default: 25,
+    default: 95,
     normalize: (value) => value / 100,
     category: 'braking'
   },
@@ -200,7 +200,7 @@ export const FEATURE_DEFINITIONS = [
     unit: 'kW',
     min: 0,
     max: 50,
-    default: 8,
+    default: 45,
     normalize: (value) => value,
     category: 'usage'
   },
@@ -210,7 +210,7 @@ export const FEATURE_DEFINITIONS = [
     unit: 'index',
     min: 0,
     max: 100,
-    default: 45,
+    default: 92,
     normalize: (value) => value,
     category: 'usage'
   },
@@ -220,13 +220,14 @@ export const FEATURE_DEFINITIONS = [
     unit: '%',
     min: 0,
     max: 100,
-    default: 85,
+    default: 10,
     normalize: (value) => value / 100,
     category: 'overall'
   }
 ];
 
 /**
+
  * Get default feature values
  * @returns {Array<number>} Array of normalized default values
  */

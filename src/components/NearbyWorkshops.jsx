@@ -57,7 +57,7 @@ const darkMapStyles = [
   { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#283d6a' }] }
 ];
 
-const NearbyWorkshops = () => {
+const NearbyWorkshops = ({ autoSearch = false }) => {
   const theme = useTheme();
   const { isDark } = useThemeMode();
   
@@ -69,13 +69,13 @@ const NearbyWorkshops = () => {
   const [selectedCenter, setSelectedCenter] = useState(null);
   const [hasInitialized, setHasInitialized] = useState(false);
 
-  // Load Google Maps API
+  // Load Google Maps API (needs to be outside effect for stability)
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
     libraries: LIBRARIES
   });
 
-  // Theme-based colors
+  // Theme-based colors (Memoized for performance)
   const colors = useMemo(() => ({
     cardBg: isDark ? 'rgba(22, 27, 34, 0.8)' : 'rgba(255, 255, 255, 0.95)',
     cardBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
@@ -91,7 +91,7 @@ const NearbyWorkshops = () => {
     emptyBg: isDark ? 'rgba(22, 27, 34, 0.6)' : 'rgba(248, 250, 252, 0.9)'
   }), [isDark]);
 
-  // Get user's current location
+  // Define getCurrentLocation first so useEffect can use it
   const getCurrentLocation = useCallback(() => {
     setLoading(true);
     setError(null);
@@ -107,7 +107,6 @@ const NearbyWorkshops = () => {
         const { latitude, longitude } = position.coords;
         setUserLocation({ lat: latitude, lng: longitude });
         
-        // Fetch nearby service centers
         try {
           const response = await getServiceCenters(latitude, longitude, 15000);
           if (response.success) {
@@ -124,24 +123,21 @@ const NearbyWorkshops = () => {
       },
       (err) => {
         console.error('Geolocation error:', err);
-        switch (err.code) {
-          case err.PERMISSION_DENIED:
-            setError('Location permission denied. Please enable location access in your browser settings.');
-            break;
-          case err.POSITION_UNAVAILABLE:
-            setError('Location information unavailable. Please try again.');
-            break;
-          case err.TIMEOUT:
-            setError('Location request timed out. Please try again.');
-            break;
-          default:
-            setError('An error occurred while getting your location.');
-        }
+        setError('Location permission denied or unavailable.');
         setLoading(false);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   }, []);
+
+  // Trigger search on mount if autoSearch is enabled
+  useEffect(() => {
+    if (autoSearch && !hasInitialized) {
+      setHasInitialized(true);
+      getCurrentLocation();
+    }
+  }, [autoSearch, hasInitialized, getCurrentLocation]);
+
 
   // Map options
   const mapOptions = useMemo(() => ({
